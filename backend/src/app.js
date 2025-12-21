@@ -4,12 +4,18 @@ import cookieParser from "cookie-parser"; //cookie-parser is a middleware for Ex
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://streamtweet.netlify.app",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "https://wondrous-cassata-2d6676.netlify.app",
+    origin: allowedOrigins,
     credentials: true,
   })
 );
+
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ limit: "16kb" }));
