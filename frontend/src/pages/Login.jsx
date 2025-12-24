@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../Auth/AuthContext"; 
+import { useAuth } from "../Auth/AuthContext";
 import api from "../api/axios";
 
 function Login() {
@@ -10,7 +10,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { setUser, setIsLoggedIn } = useAuth(); 
+  const { setUser, setIsLoggedIn } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,13 +23,12 @@ function Login() {
       if (response.data && response.data.data && response.data.data.user) {
         const returnedUser = response.data.data.user;
         const accessToken = response.data.data.accessToken;
-        // Persist token for axios interceptor
         if (accessToken) {
           localStorage.setItem("token", accessToken);
         }
         setUser(returnedUser);
         setIsLoggedIn(true);
-        navigate("/"); 
+        navigate("/");
       } else {
         throw new Error("Invalid login response from server.");
       }
@@ -52,7 +51,6 @@ function Login() {
         <h2 className="text-3xl font-bold mb-6 text-center">Login</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -71,7 +69,6 @@ function Login() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label
               htmlFor="password"
@@ -90,14 +87,12 @@ function Login() {
             />
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="text-red-400 text-sm text-center bg-red-900/30 p-3 rounded-md">
               {error}
             </div>
           )}
 
-          {/* Submit Button */}
           <div>
             <button
               type="submit"
@@ -135,7 +130,6 @@ function Login() {
           </div>
         </form>
 
-        {/* Link to Register */}
         <p className="mt-6 text-center text-sm text-gray-400">
           Don't have an account?{" "}
           <Link

@@ -1,1 +1,1 @@
-export const DB_Name="Pravin"
+export const DB_Name="StreamTweetDB";

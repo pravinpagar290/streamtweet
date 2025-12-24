@@ -22,13 +22,11 @@ function Header() {
   return (
     <header className="bg-gray-800 text-white shadow-md sticky top-0 z-50">
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-        {/* Logo */}
         <div className="flex items-center gap-6">
           <Link to="/" className="text-2xl font-bold text-blue-500">
             StreamTweet
           </Link>
 
-          {/* Primary navigation */}
           <div className="hidden md:flex items-center gap-3">
             <NavLink
               to="/"
@@ -69,12 +67,23 @@ function Header() {
             >
               History
             </NavLink>
+
+            <NavLink
+              to="/tweets"
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-md text-sm font-medium ${
+                  isActive
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700"
+                }`
+              }
+            >
+              Tweets
+            </NavLink>
           </div>
         </div>
 
-        {/* Right side: auth / profile & theme toggle */}
         <div className="flex items-center space-x-4">
-          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"

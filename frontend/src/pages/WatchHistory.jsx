@@ -17,7 +17,6 @@ function WatchHistory() {
         const response = await api.get("/user/history");
 
         if (response.data && response.data.data) {
-          // Sort by watchedAt descending (most recent first)
           const sorted = response.data.data.sort(
             (a, b) => new Date(b.watchedAt) - new Date(a.watchedAt)
           );

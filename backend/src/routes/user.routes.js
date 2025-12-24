@@ -54,13 +54,15 @@ router
   .route("/update-account-details")
   .patch(verifyToken, updateAccountDetails);
 
-router.route("/c/:username").get(verifyToken, getUserProfile);
+// public channel info (profile page)
+router.route("/c/:username").get(getUserProfile);
+
+// protected channel info (includes isSubscribed for current user)
+router.get("/channel/:username", verifyToken, getChannelInfo);
 
 router.route("/history").get(verifyToken, getUserHistory);
 
-// New subscription routes
 router.post("/subscribe/:username", verifyToken, subscribeToChannel);
 router.post("/unsubscribe/:username", verifyToken, unsubscribeFromChannel);
-router.get("/channel/:username", verifyToken, getChannelInfo);
 
 export default router;

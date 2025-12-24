@@ -1,104 +1,122 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
-import { placeholderDataUrl } from "../utils/placeholder"; // added import
+import { placeholderDataUrl } from "../utils/placeholder";
 
-function Home() {
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await api.get("/video/");
-
-        if (response.data && response.data.data) {
-          setVideos(response.data.data);
-        } else {
-          setVideos([]);
-        }
-      } catch (err) {
-        console.error("Error fetching videos:", err);
-        setError("Failed to fetch videos. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="text-white text-center text-lg p-10">
-        Loading videos...
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div className="text-red-500 text-center text-lg p-10">{error}</div>;
-  }
-
-  // 3. Handle No Videos Found
-  if (videos.length === 0) {
-    return (
-      <div className="text-gray-400 text-center text-lg p-10">
-        No videos found.
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {videos.map((video) => (
-          <VideoCard key={video._id} video={video} />
-        ))}
-      </div>
+const SkeletonCard = () => (
+  <div className="w-full rounded-xl overflow-hidden bg-gray-800 animate-pulse">
+    <div className="w-full h-40 bg-gray-700" />
+    <div className="p-4 space-y-2">
+      <div className="h-4 bg-gray-700 rounded" />
+      <div className="h-3 bg-gray-700 rounded w-2/3" />
+      <div className="h-3 bg-gray-700 rounded w-1/3" />
     </div>
-  );
-}
+  </div>
+);
 
-// It's good practice to make the card its own component.
 function VideoCard({ video }) {
-  // We need to gracefully handle missing data.
-  const videoTitle = video.title || "Untitled Video";
-  const thumbnailUrl =
-    video.thumbnail || placeholderDataUrl(300, 200, "No Image");
+  const [thumbLoaded, setThumbLoaded] = useState(false);
 
-  const ownerUsername = video.owner?.username || "Unknown Uploader";
-  const videoViews = video.views || 0;
+  const title = video.title || "Untitled Video";
+  const thumb = video.thumbnail || placeholderDataUrl(320, 180, "No Image");
+  const author = video.owner?.username || "Unknown Uploader";
+  const views = Intl.NumberFormat("en", { notation: "compact" }).format(
+    video.views || 0
+  );
 
   return (
-    <Link to={`/video/${video._id}`} className="block group">
-      <div className="w-full bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 group-hover:scale-105">
-        {/* Thumbnail */}
+    <Link
+      to={`/video/${video._id}`}
+      className="group block rounded-xl overflow-hidden shadow-lg
+                 bg-gray-800 ring-1 ring-white/10
+                 hover:ring-2 hover:ring-blue-400
+                 transition-all duration-300 hover:-translate-y-1"
+    >
+      <div className="relative w-full pt-[56.25%] bg-gray-900">
+        {!thumbLoaded && (
+          <div className="absolute inset-0 bg-gray-700 animate-pulse" />
+        )}
         <img
-          src={thumbnailUrl}
-          alt={videoTitle}
-          className="w-full h-40 object-cover"
+          src={thumb}
+          alt={title}
+          onLoad={() => setThumbLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover
+                     transition-opacity duration-500
+                     ${thumbLoaded ? "opacity-100" : "opacity-0"}`}
         />
+      </div>
 
-        {/* Video Info */}
-        <div className="p-4 text-white">
-          <h3 className="font-bold text-lg mb-2 truncate" title={videoTitle}>
-            {videoTitle}
-          </h3>
+      <div className="p-3 text-white">
+        <h3
+          className="font-semibold text-sm line-clamp-2
+                     group-hover:text-blue-300 transition"
+          title={title}
+        >
+          {title}
+        </h3>
 
-          <p className="text-gray-400 text-sm mb-2">{ownerUsername}</p>
+        <p className="text-gray-400 text-xs mt-1">{author}</p>
 
-          <div className="text-gray-500 text-xs">
-            <span>{videoViews} views</span>
-            {/* You could add a date here if your API provides it */}
-            {/* <span> • {new Date(video.createdAt).toLocaleDateString()}</span> */}
-          </div>
-        </div>
+        <p className="text-gray-500 text-xs mt-1">{views} views</p>
       </div>
     </Link>
   );
 }
 
-export default Home;
+export default function Home() {
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { data } = await api.get("/video/");
+        if (!cancelled) setVideos(data?.data || []);
+      } catch (e) {
+        if (!cancelled) setError("Failed to load videos. Try again later.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => (cancelled = true);
+  }, []);
+
+  if (loading)
+    return (
+      <div className="container mx-auto p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-400">
+        {error}
+      </div>
+    );
+
+  if (!videos.length)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-400">
+        No videos yet.
+      </div>
+    );
+
+  return (
+    <div className="container mx-auto px-4 py-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+        {videos.map((v) => (
+          <VideoCard key={v._id} video={v} />
+        ))}
+      </div>
+    </div>
+  );
+}

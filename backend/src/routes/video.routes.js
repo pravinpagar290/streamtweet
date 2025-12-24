@@ -4,19 +4,17 @@ import {
   getVideoByID,
   toUploadVideo,
   updateVideoDetails,
-  videoDelete
+  videoDelete,
+  likeVideo,
 } from "../controllers/video.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// PUBLIC ROUTES
-router.get("/", getAllVideos);                     // GET all published videos
-router.get("/:videoId", getVideoByID);             // GET single video by ID
+router.get("/", getAllVideos);
+router.get("/:videoId", getVideoByID);
 
-
-// PROTECTED ROUTES
 router.post(
   "/upload",
   verifyToken,
@@ -34,10 +32,8 @@ router.patch(
   updateVideoDetails
 );
 
-router.delete(
-  "/:videoId",
-  verifyToken,
-  videoDelete
-);
+router.delete("/:videoId", verifyToken, videoDelete);
+
+router.post("/:videoId/like", verifyToken, likeVideo);
 
 export default router;

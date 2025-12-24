@@ -35,7 +35,6 @@ const registerUser = asyncHandler(async (req, res) => {
     $or: [{ email }, { username }],
   });
 
-  // if user already exists, throw
   if (userExist) {
     throw new ApiError(409, "Username or email already exists");
   }
@@ -73,7 +72,6 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // get the users details
   const { username, password, email } = req.body;
   if (!username && !email) {
     throw new ApiError(400, "Missing email or username");
@@ -141,8 +139,6 @@ const logOutUser = asyncHandler(async (req, res) => {
     .clearCookie("accessToken", option)
     .json(new ApiResponse(200, {}, "User Successfully log Out"));
 });
-
-// making the end point where access token is refreshed
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRequestToken =
@@ -276,99 +272,56 @@ const changeAvatar = asyncHandler(async (req, res) => {
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
-
-  if (!username?.trim()) {
-    throw new ApiError(400, "invalid Username");
+  if (!username) {
+    throw new ApiError(400, "Username required");
   }
 
-  const channel = await User.aggregate([
-    {
-      $match: {
-        username: username.toLowerCase(),
-      },
-    },
-    {
-      $lookup: {
-        from: "subscriptions",
-        localField: "_id",
-        foreignField: "channel",
-        as: "subscribers",
-      },
-    },
-    {
-      $lookup: {
-        from: "subscriptions",
-        localField: "_id",
-        foreignField: "subscriber",
-        as: "subscribeTo",
-      },
-    },
-    {
-      $addFields: {
-        subscriberCount: {
-          $size: "$subscribers",
-        },
-        channelSubscribedToCount: {
-          $size: "$subscribeTo",
-        },
-        isSubscribed: {
-          $cond: {
-            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
-            then: true,
-            else: false,
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        username: 1,
-        fullName: 1,
-        avatar: 1,
-        coverImage: 1,
-        subscriberCount: 1,
-        channelSubscribedToCount: 1,
-      },
-    },
-  ]);
-
-  if (!channel?.length) {
-    throw new ApiError(404, "Channel Not Found");
-  }
-
-  res
-    .status(200)
-    .json(
-      new ApiResponse(200, channel[0], "User Channel fetched Successfully  ")
-    );
-});
-
-// Safe placeholder for watch history (avoid broken aggregation)
-const getUserHistory = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id)
-    .populate({
-      path: "watchHistory.video",
-      select: "title thumbnail description owner views createdAt",
-      populate: {
-        path: "owner",
-        select: "username avatar",
-      },
-    })
+  const channel = await User.findOne({ username })
+    .select("username fullName avatar coverImage _id")
     .lean();
-
-  if (!user) {
-    throw new ApiError(404, "User not found");
+  if (!channel) {
+    throw new ApiError(404, "Channel not found");
   }
 
-  // Return only video objects with watchedAt timestamp
-  const history = user.watchHistory.map((item) => ({
-    ...item.video,
-    watchedAt: item.watchedAt,
-  }));
+  const subscriberCount =
+    (channel.subscribers && Array.isArray(channel.subscribers)
+      ? channel.subscribers.length
+      : channel.subscriberCount) || 0;
 
   return res
     .status(200)
-    .json(new ApiResponse(200, history, "Watch History Fetched Successfully"));
+    .json(new ApiResponse(200, { channel, subscriberCount }, "Channel found"));
+});
+
+const getUserHistory = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  const user = await User.findById(req.user._id).populate({
+    path: "watchHistory.video",
+    select: "title thumbnail owner views description createdAt",
+    populate: { path: "owner", select: "username avatar" },
+  });
+
+  const entries = user?.watchHistory || [];
+  const latestByVideo = new Map();
+  for (const entry of entries) {
+    const videoObj = entry.video ? entry.video.toObject() : null;
+    if (!videoObj) continue;
+    const vid = videoObj._id?.toString();
+    const existing = latestByVideo.get(vid);
+    if (!existing || new Date(entry.watchedAt) > new Date(existing.watchedAt)) {
+      latestByVideo.set(vid, { ...videoObj, watchedAt: entry.watchedAt });
+    }
+  }
+  const raw = Array.from(latestByVideo.values()).sort(
+    (a, b) => new Date(b.watchedAt) - new Date(a.watchedAt)
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, raw, "Watch history fetched successfully"));
 });
 
 export {

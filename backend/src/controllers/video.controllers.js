@@ -5,10 +5,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
 
-/**
- * UPLOAD VIDEO
- */
 export const toUploadVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
 
@@ -27,14 +25,12 @@ export const toUploadVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Only MP4 videos are allowed");
   }
 
-  // Upload video with type parameter
   const uploadedVideo = await uploadOnCloudinary(videoFile.path, "video");
   const videoUrl = uploadedVideo?.secure_url || uploadedVideo?.url;
   if (!videoUrl) {
     throw new ApiError(400, "Failed to upload video to Cloudinary");
   }
 
-  // Upload thumbnail with type parameter
   const uploadedThumbnail = thumbnailFile
     ? await uploadOnCloudinary(thumbnailFile.path, "image")
     : null;
@@ -56,12 +52,8 @@ export const toUploadVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, videoData, "Video uploaded successfully"));
 });
 
-/**
- * GET VIDEO BY ID - and record view
- */
 export const getVideoByID = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  console.log("Fetching video with ID:", videoId);
   if (!videoId) {
     throw new ApiError(400, "Video ID is required");
   }
@@ -77,20 +69,39 @@ export const getVideoByID = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found");
   }
 
-  // Ensure videoFile exists and is a string
   if (!video.videoFile || typeof video.videoFile !== "string") {
     throw new ApiError(500, "Video URL missing or invalid");
   }
 
-  // Record view (non-blocking)
-  if (req.user) {
+  let requesterId = req.user?._id ?? null;
+  if (!requesterId) {
+    try {
+      let token = null;
+      const authHeader = req.headers?.authorization;
+      if (
+        authHeader &&
+        typeof authHeader === "string" &&
+        authHeader.startsWith("Bearer ")
+      ) {
+        token = authHeader.split(" ")[1];
+      } else if (req.cookies?.accessToken) {
+        token = req.cookies.accessToken;
+      }
+      if (token) {
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        if (decoded && decoded._id) requesterId = decoded._id;
+      }
+    } catch (err) {
+      requesterId = null;
+    }
+  }
+
+  if (requesterId) {
     Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } }).catch((err) =>
       console.warn("Failed to increment views:", err)
     );
-
-    // Record in user's watch history
     User.findByIdAndUpdate(
-      req.user._id,
+      requesterId,
       {
         $push: {
           watchHistory: {
@@ -102,18 +113,72 @@ export const getVideoByID = asyncHandler(async (req, res) => {
       { new: false }
     ).catch((err) => console.warn("Failed to record watch history:", err));
   } else {
-    // Anonymous user: just increment views
     Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } }).catch((err) =>
       console.warn("Failed to increment views:", err)
     );
   }
 
+  if (requesterId && video.likedBy) {
+    video.liked = video.likedBy.some(
+      (id) => id.toString() === requesterId.toString()
+    );
+  } else {
+    video.liked = false;
+  }
+
   return res.status(200).json(new ApiResponse(200, video, "Video found"));
 });
 
-/**
- * GET ALL VIDEOS (published only)
- */
+export const likeVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  if (!videoId) {
+    throw new ApiError(400, "Video ID is required");
+  }
+  if (!mongoose.isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID format");
+  }
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  const userId = req.user._id;
+  video.likedBy = video.likedBy || [];
+  const alreadyLiked = video.likedBy.some(
+    (id) => id.toString() === userId.toString()
+  );
+
+  if (alreadyLiked) {
+    video.likedBy = video.likedBy.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+  } else {
+    video.likedBy.push(userId);
+  }
+
+  video.likesCount = video.likedBy.length;
+  await video.save();
+
+  const updated = await Video.findById(videoId)
+    .populate("owner", "username avatar")
+    .lean();
+  const out = {
+    ...updated,
+    liked: updated.likedBy?.some((id) => id.toString() === userId.toString()),
+  };
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        out,
+        alreadyLiked ? "Video unliked successfully" : "Video liked successfully"
+      )
+    );
+});
+
 export const getAllVideos = asyncHandler(async (req, res) => {
   const videos = await Video.find({ isPublished: true })
     .sort({ createdAt: -1 })
@@ -124,9 +189,6 @@ export const getAllVideos = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, videos, "Videos fetched successfully"));
 });
 
-/**
- * UPDATE VIDEO DETAILS
- */
 export const updateVideoDetails = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { title, description } = req.body;
@@ -162,9 +224,6 @@ export const updateVideoDetails = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video updated successfully"));
 });
 
-/**
- * DELETE VIDEO
- */
 export const videoDelete = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
 

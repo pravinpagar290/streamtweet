@@ -18,13 +18,12 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
-    if (!username || !email || !password ) {
+
+    if (!username || !email || !password || !avatar) {
       setError("Username, email, password, and avatar are required.");
       return;
     }
-    
+
     setLoading(true);
     setError(null);
 
@@ -33,22 +32,34 @@ function Register() {
     formData.append("fullName", fullName);
     formData.append("email", email);
     formData.append("password", password);
-    formData.append("avatar", avatar); // Avatar is required
-    
+    formData.append("avatar", avatar);
+
     if (coverImage) {
       formData.append("coverImage", coverImage);
     }
 
     try {
-      const response = await api.post("/user/register", formData)
+      const response = await api.post("/user/register", formData);
 
       console.log("Registration successful:", response.data);
-      navigate("/login"); // Redirect to login after successful registration
+      navigate("/login");
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
+      const status = err?.response?.status;
+      const serverMsg =
+        err?.response?.data?.message ??
+        err?.response?.data?.data?.message ??
+        err?.response?.data?.error ??
+        err?.normalizedMessage;
+      if (status === 409) {
+        setError(
+          serverMsg || "An account with that email/username already exists."
+        );
+      } else if (status === 400) {
+        setError(serverMsg || "Invalid registration data.");
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError(
+          serverMsg || "An unexpected error occurred. Please try again."
+        );
       }
     } finally {
       setLoading(false);
@@ -59,11 +70,13 @@ function Register() {
     <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center p-4">
       <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg">
         <h2 className="text-3xl font-bold mb-6 text-center">Create Account</h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-300"
+            >
               Username <span className="text-red-500">*</span>
             </label>
             <input
@@ -77,7 +90,10 @@ function Register() {
             />
           </div>
           <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="fullName"
+              className="block text-sm font-medium text-gray-300"
+            >
               Full Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -91,9 +107,11 @@ function Register() {
             />
           </div>
 
-          {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-300"
+            >
               Email <span className="text-red-500">*</span>
             </label>
             <input
@@ -107,9 +125,11 @@ function Register() {
             />
           </div>
 
-          {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-300"
+            >
               Password <span className="text-red-500">*</span>
             </label>
             <input
@@ -123,9 +143,11 @@ function Register() {
             />
           </div>
 
-          {/* Avatar Input */}
           <div>
-            <label htmlFor="avatar" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="avatar"
+              className="block text-sm font-medium text-gray-300"
+            >
               Avatar <span className="text-red-500">*</span>
             </label>
             <input
@@ -140,14 +162,15 @@ function Register() {
                 file:bg-blue-600 file:text-white
                 hover:file:bg-blue-700
                 disabled:opacity-50"
-              
               disabled={loading}
             />
           </div>
-          
-          {/* Cover Image Input */}
+
           <div>
-            <label htmlFor="coverImage" className="block text-sm font-medium text-gray-300">
+            <label
+              htmlFor="coverImage"
+              className="block text-sm font-medium text-gray-300"
+            >
               Cover Image (Optional)
             </label>
             <input
@@ -166,14 +189,12 @@ function Register() {
             />
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="text-red-400 text-sm text-center bg-red-900/30 p-3 rounded-md">
               {error}
             </div>
           )}
 
-          {/* Submit Button */}
           <div className="pt-2">
             <button
               type="submit"
@@ -182,23 +203,41 @@ function Register() {
             >
               {loading ? (
                 <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Registering...
                 </div>
               ) : (
-                'Create Account'
+                "Create Account"
               )}
             </button>
           </div>
         </form>
-        
-        {/* Link to Login */}
+
         <p className="mt-6 text-center text-sm text-gray-400">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-500 hover:text-blue-400">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-medium text-blue-500 hover:text-blue-400"
+          >
             Log in
           </Link>
         </p>

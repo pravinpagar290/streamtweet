@@ -13,24 +13,72 @@ export default function Profile() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
+  const [videos, setVideos] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
+      const targetUsername = username ?? currentUser?.username;
+      if (!targetUsername) {
+        if (!isLoggedIn) {
+          setLoading(false);
+          setError(
+            "No channel specified. Please login or visit a channel URL."
+          );
+          return;
+        }
+        setLoading(false);
+        setError("Unable to determine channel username.");
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        const res = await api.get(`/user/channel/${username}`);
-        if (res?.data?.data) {
-          setChannel(res.data.data.channel);
-          setSubscriberCount(res.data.data.subscriberCount || 0);
-          setIsSubscribed(!!res.data.data.isSubscribed);
+        const resPublic = await api.get(`/user/c/${targetUsername}`);
+        if (resPublic?.data?.data) {
+          setChannel(resPublic.data.data.channel);
+          setSubscriberCount(resPublic.data.data.subscriberCount ?? 0);
+        } else {
+          setChannel(null);
+          setError("Channel not found.");
+        }
+
+        if (isLoggedIn) {
+          try {
+            const resProtected = await api.get(
+              `/user/channel/${targetUsername}`
+            );
+            if (resProtected?.data?.data) {
+              setIsSubscribed(!!resProtected.data.data.isSubscribed);
+              setSubscriberCount(
+                resProtected.data.data.subscriberCount ?? subscriberCount
+              );
+            }
+          } catch (err) {
+            // ignore protected fetch errors silently
+          }
+        }
+
+        try {
+          const vidRes = await api.get("/video/");
+          const allVideos = vidRes?.data?.data ?? [];
+          const channelVideos = allVideos.filter(
+            (v) => v.owner?.username === targetUsername
+          );
+          setVideos(channelVideos);
+        } catch (err) {
+          setVideos([]);
         }
       } catch (err) {
         console.error("Failed to load channel", err);
+        setChannel(null);
+        setError(err?.response?.data?.message || "Failed to load channel");
       } finally {
         setLoading(false);
       }
     })();
-  }, [username]);
+  }, [username, currentUser, isLoggedIn]);
 
   const handleToggleSubscribe = async () => {
     if (!isLoggedIn) {
@@ -66,6 +114,10 @@ export default function Profile() {
     );
   }
 
+  if (error) {
+    return <div className="text-red-400 text-center p-10">{error}</div>;
+  }
+
   if (!channel) {
     return (
       <div className="text-gray-400 text-center p-10">Channel not found.</div>
@@ -75,7 +127,7 @@ export default function Profile() {
   const isOwner = currentUser?._id === channel._id;
 
   return (
-    <div className="max-w-3xl mx-auto text-white p-6">
+    <div className="max-w-5xl mx-auto text-white p-6">
       <div className="flex items-center gap-6">
         <img
           src={channel.avatar || "/vite.svg"}
@@ -116,6 +168,35 @@ export default function Profile() {
         <p className="text-gray-300">
           {channel.coverImage ? "Has cover image" : "No cover image"}
         </p>
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-xl font-semibold mb-4">Videos</h2>
+        {videos.length === 0 ? (
+          <div className="text-gray-400">No videos yet.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {videos.map((v) => (
+              <a key={v._id} href={`/video/${v._id}`} className="block group">
+                <div className="bg-gray-800 rounded-lg overflow-hidden">
+                  <img
+                    src={v.thumbnail || "/vite.svg"}
+                    alt={v.title}
+                    className="w-full h-40 object-cover"
+                  />
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm line-clamp-2">
+                      {v.title}
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {v.views || 0} views
+                    </p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

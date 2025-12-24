@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../api/axios'; // Your configured Axios instance
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 function Upload() {
-  // Form data states
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [videoFile, setVideoFile] = useState(null);
   const [thumbnail, setThumbnail] = useState(null);
 
-  // UI/UX states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -18,10 +16,9 @@ function Upload() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
+
     if (!title || !description || !videoFile) {
-      setError('Title, description, and a video file are required.');
+      setError("Title, description, and a video file are required.");
       return;
     }
 
@@ -29,40 +26,33 @@ function Upload() {
     setError(null);
     setSuccess(null);
 
-    // 1. Create FormData
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('videoFile', videoFile);
-    
-    // Thumbnail is optional, only append if it exists
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("videoFile", videoFile);
+
     if (thumbnail) {
-      formData.append('thumbnail', thumbnail);
+      formData.append("thumbnail", thumbnail);
     }
 
     try {
-      // 2. Send FormData to the API
-      const response = await api.post('/video/upload', formData, {
-        // Axios sets 'Content-Type': 'multipart/form-data' automatically
-      });
+      const response = await api.post("/video/upload", formData, {});
 
       if (response.status === 200) {
-        setSuccess('Video uploaded successfully! Redirecting to home...');
-        
-        // Clear form
-        setTitle('');
-        setDescription('');
+        setSuccess("Video uploaded successfully! Redirecting to home...");
+        setTitle("");
+        setDescription("");
         setVideoFile(null);
         setThumbnail(null);
-        
-        // Redirect home after a short delay
         setTimeout(() => {
-          navigate('/');
+          navigate("/");
         }, 2000);
       }
     } catch (err) {
       console.error("Upload failed:", err);
-      setError(err.response?.data?.message || 'Upload failed. Please try again.');
+      setError(
+        err.response?.data?.message || "Upload failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -70,12 +60,16 @@ function Upload() {
 
   return (
     <div className="max-w-2xl w-full mx-auto bg-gray-800 p-6 sm:p-8 rounded-lg shadow-lg">
-      <h2 className="text-3xl font-bold mb-6 text-center text-white">Upload Video</h2>
-      
+      <h2 className="text-3xl font-bold mb-6 text-center text-white">
+        Upload Video
+      </h2>
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Title */}
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-300">
+          <label
+            htmlFor="title"
+            className="block text-sm font-medium text-gray-300"
+          >
             Title
           </label>
           <input
@@ -88,9 +82,11 @@ function Upload() {
           />
         </div>
 
-        {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-300">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-300"
+          >
             Description
           </label>
           <textarea
@@ -103,9 +99,11 @@ function Upload() {
           />
         </div>
 
-        {/* Video File Input */}
         <div>
-          <label htmlFor="videoFile" className="block text-sm font-medium text-gray-300">
+          <label
+            htmlFor="videoFile"
+            className="block text-sm font-medium text-gray-300"
+          >
             Video File <span className="text-red-500">*</span>
           </label>
           <input
@@ -124,9 +122,11 @@ function Upload() {
           />
         </div>
 
-        {/* Thumbnail File Input */}
         <div>
-          <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-300">
+          <label
+            htmlFor="thumbnail"
+            className="block text-sm font-medium text-gray-300"
+          >
             Thumbnail (Optional)
           </label>
           <input
@@ -145,11 +145,13 @@ function Upload() {
           />
         </div>
 
-        {/* Messages */}
-        {error && <div className="text-red-500 text-sm text-center">{error}</div>}
-        {success && <div className="text-green-500 text-sm text-center">{success}</div>}
+        {error && (
+          <div className="text-red-500 text-sm text-center">{error}</div>
+        )}
+        {success && (
+          <div className="text-green-500 text-sm text-center">{success}</div>
+        )}
 
-        {/* Submit Button & Loading Spinner */}
         <div>
           <button
             type="submit"
@@ -158,14 +160,30 @@ function Upload() {
           >
             {loading ? (
               <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Uploading...
               </div>
             ) : (
-              'Upload Video'
+              "Upload Video"
             )}
           </button>
         </div>
